@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+title: "PrivacIA: Framework de Anonimização by-Design e Revisão Adversarial"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: "Silva" # Atualize com seu sobrenome real
+    given-names: "Christian" # Atualize com seu nome real
+    # orcid: "https://orcid.org/0000-0000-0000-0000" # Descomente e preencha se tiver ORCID
+repository-code: "https://github.com/cyberchristian92/privacIA"
+abstract: >-
+  PrivacIA é uma ferramenta completa e local de anonimização e validação 
+  de segurança de documentos sensíveis, que opera sem vazamentos via rede,
+  projetado especialmente para estar de acordo com a LGPD.
+keywords:
+  - LGPD
+  - Anonymization
+  - NLP
+  - Privacy Enhancing Technologies
+  - Python
+  - Adversarial Attacks
+license: "MIT"
+version: "1.0.0"
+date-released: "2026-06-22"

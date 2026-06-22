@@ -14,6 +14,7 @@ Faker.seed(42)
 random.seed(42)
 
 API_URL = "http://127.0.0.1:8000/api/v1/anonymize"
+REVIEW_URL = "http://127.0.0.1:8000/api/v1/review"
 NUM_DOCS = 30 # Teste com 30 documentos complexos
 
 # Templates de documentos jurídicos/RH
@@ -48,7 +49,6 @@ def generate_synthetic_data(num_docs: int):
         doc_id = str(uuid.uuid4())
         docs.append({"id": doc_id, "text": text})
         
-        # O Ground Truth contém as entidades exatas que esperamos encontrar
         ground_truth.append({
             "id": doc_id,
             "entities": {
@@ -66,20 +66,27 @@ def run_benchmark(docs, ground_truth):
     results = []
     
     print(f"Iniciando benchmark com {len(docs)} documentos...")
-    with httpx.Client(timeout=30) as client:
+    with httpx.Client(timeout=60) as client:
         for idx, doc in enumerate(docs):
             start_time = time.time()
             
             try:
+                # 1. Rota de Anonimização
                 response = client.post(API_URL, json={"text": doc["text"]})
                 response.raise_for_status()
                 data = response.json()
-                latency = (time.time() - start_time) * 1000 # ms
                 
-                # Coleta entidades detectadas
+                # 2. Rota de Ataque Adversarial / Revisão
+                review_response = client.post(REVIEW_URL, json={
+                    "document_id": data["document_id"],
+                    "anonymized_text": data["anonymized_text"]
+                })
+                review_response.raise_for_status()
+                review_data = review_response.json()
+                
+                latency = (time.time() - start_time) * 1000 # ms total
+                
                 detected = data.get("entities", [])
-                
-                # Compara com ground truth
                 gt = ground_truth[idx]["entities"]
                 
                 metrics = {
@@ -88,8 +95,10 @@ def run_benchmark(docs, ground_truth):
                     "PESSOA_found": any(gt["PESSOA"] in e["surface_text"] or e["surface_text"] in gt["PESSOA"] for e in detected if e["type"] == "PESSOA"),
                     "CPF_found": any(gt["CPF"] in e["surface_text"] for e in detected if e["type"] == "CPF"),
                     "EMAIL_found": any(gt["EMAIL"] in e["surface_text"] for e in detected if e["type"] == "EMAIL"),
-                    "TELEFONE_found": any(gt["TELEFONE"][-4:] in e["surface_text"] for e in detected if e["type"] == "TELEFONE"), # checa final do tel por variacoes de formatacao
+                    "TELEFONE_found": any(gt["TELEFONE"][-4:] in e["surface_text"] for e in detected if e["type"] == "TELEFONE"),
                     "CNPJ_found": any(gt["CNPJ"] in e["surface_text"] for e in detected if e["type"] == "CNPJ"),
+                    "risk_level": review_data.get("risk_level", "Desconhecido"),
+                    "approved": review_data.get("approved", False)
                 }
                 results.append(metrics)
                 
@@ -103,7 +112,6 @@ def generate_report_and_chart(df):
         print("Nenhum resultado para gerar.")
         return
         
-    # Calcula taxas de sucesso
     accuracy = {
         "PESSOA": df["PESSOA_found"].mean() * 100,
         "CPF": df["CPF_found"].mean() * 100,
@@ -115,44 +123,49 @@ def generate_report_and_chart(df):
     avg_latency = df["latency_ms"].mean()
     p95_latency = df["latency_ms"].quantile(0.95)
     
-    # 1. Gera e salva o gráfico
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    # Avaliação Adversarial
+    risk_counts = df['risk_level'].value_counts()
+    
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
     
     # Gráfico 1: Acurácia
     bars = ax1.bar(accuracy.keys(), accuracy.values(), color=['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'])
     ax1.set_ylim(0, 110)
     ax1.set_ylabel('Taxa de Deteção (%)')
-    ax1.set_title('Efetividade da Extração por Tipo de Entidade')
+    ax1.set_title('Efetividade de Extração (PII)')
     for bar in bars:
         height = bar.get_height()
-        ax1.annotate(f'{height:.1f}%',
-                     xy=(bar.get_x() + bar.get_width() / 2, height),
-                     xytext=(0, 3),  # 3 points vertical offset
-                     textcoords="offset points",
-                     ha='center', va='bottom')
+        ax1.annotate(f'{height:.1f}%', xy=(bar.get_x() + bar.get_width() / 2, height),
+                     xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
                      
     # Gráfico 2: Latência
     ax2.hist(df["latency_ms"], bins=10, color='#64748b', edgecolor='white')
     ax2.set_xlabel('Tempo (ms)')
-    ax2.set_ylabel('Frequência (Documentos)')
-    ax2.set_title(f'Distribuição de Latência da API\n(Média: {avg_latency:.1f}ms | P95: {p95_latency:.1f}ms)')
+    ax2.set_ylabel('Frequência')
+    ax2.set_title(f'Latência API Completa\n(Média: {avg_latency:.1f}ms)')
+    
+    # Gráfico 3: Risco Adversarial
+    colors_risk = {'Baixo': '#10b981', 'Médio': '#f59e0b', 'Alto': '#ef4444', 'Desconhecido': '#9ca3af'}
+    ax3.pie(risk_counts.values, labels=risk_counts.index, autopct='%1.1f%%', 
+            colors=[colors_risk.get(k, '#9ca3af') for k in risk_counts.index], startangle=90)
+    ax3.set_title('Reidentificação por Ataque Adversarial')
     
     plt.tight_layout()
     chart_path = r"C:\Users\chris\.gemini\antigravity-ide\brain\d155fbe8-e323-4dab-9e96-7b70278e50ae\benchmark_chart.png"
     plt.savefig(chart_path)
     print(f"\nGráfico salvo em: {chart_path}")
     
-    # 2. Exibe relatório textual JSON
     report_data = {
         "total_docs": len(df),
         "accuracy": accuracy,
-        "latency": {
-            "avg_ms": avg_latency,
-            "min_ms": df["latency_ms"].min(),
-            "max_ms": df["latency_ms"].max(),
-            "p95_ms": p95_latency
-        }
+        "latency": {"avg_ms": avg_latency, "p95_ms": p95_latency},
+        "adversarial_risk": risk_counts.to_dict(),
+        "approval_rate": df["approved"].mean() * 100
     }
+    
+    with open("benchmark_results.json", "w") as f:
+        json.dump(report_data, f)
+
     
     print("\n=== RESUMO DO BENCHMARK ===")
     print(json.dumps(report_data, indent=2))
