@@ -1,38 +1,43 @@
 import re
-import spacy
+import uuid
 from typing import List
 from app.api_models import Entity
-import uuid
 
 # Load model globally (will be loaded at startup)
-nlp = None
-
-def load_model():
-    global nlp
-    if nlp is None:
-        try:
-            nlp = spacy.load("pt_core_news_sm")
-        except OSError:
-            import spacy.cli
-            spacy.cli.download("pt_core_news_sm")
-            nlp = spacy.load("pt_core_news_sm")
+_nlp = None
 
 REGEX_PATTERNS = {
     "CPF": r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b",
     "CNPJ": r"\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b",
-    "TELEFONE": r"\b(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?\d{4,5}[-\s]?\d{4}\b",
-    "EMAIL": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
+    "TELEFONE": r"\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4}\b",
+    "EMAIL": r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b",
+    "CEP": r"\b\d{5}-\d{3}\b",
 }
 
+def _load_model():
+    """Loads the spaCy model on first call."""
+    global _nlp
+    if _nlp is not None:
+        return _nlp
+    try:
+        import spacy as _spacy
+        _nlp = _spacy.load("pt_core_news_sm")
+    except OSError:
+        import spacy as _spacy
+        _spacy.cli.download("pt_core_news_sm")
+        _nlp = _spacy.load("pt_core_news_sm")
+    return _nlp
+
 def detect_entities(text: str) -> List[Entity]:
-    load_model()
+    nlp = _load_model()
     doc = nlp(text)
-    entities = []
-    
-    # 1. NER
+    entities: List[Entity] = []
+
+    # 1. NER via spaCy
     for ent in doc.ents:
-        if ent.label_ in ["PER", "ORG", "LOC"]:
-            ent_type = "PESSOA" if ent.label_ == "PER" else "ORGANIZACAO" if ent.label_ == "ORG" else "LOCALIDADE"
+        label_map = {"PER": "PESSOA", "ORG": "ORGANIZACAO", "LOC": "LOCALIDADE", "GPE": "LOCALIDADE"}
+        if ent.label_ in label_map and len(ent.text.strip()) > 2:
+            ent_type = label_map[ent.label_]
             entities.append(Entity(
                 id=str(uuid.uuid4())[:8],
                 type=ent_type,
@@ -44,17 +49,14 @@ def detect_entities(text: str) -> List[Entity]:
                 sensitivity_level="alta" if ent_type == "PESSOA" else "média"
             ))
 
-    # 2. Regex
+    # 2. Regex for structured patterns
     for label, pattern in REGEX_PATTERNS.items():
-        for match in re.finditer(pattern, text):
-            # Check overlap to avoid duplicates
-            overlap = False
-            for e in entities:
-                if (match.start() >= e.span_start and match.start() < e.span_end) or \
-                   (match.end() > e.span_start and match.end() <= e.span_end):
-                    overlap = True
-                    break
-            
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            # Skip if overlapping with existing entity
+            overlap = any(
+                match.start() < e.span_end and match.end() > e.span_start
+                for e in entities
+            )
             if not overlap:
                 entities.append(Entity(
                     id=str(uuid.uuid4())[:8],
@@ -67,6 +69,6 @@ def detect_entities(text: str) -> List[Entity]:
                     sensitivity_level="alta"
                 ))
 
-    # Sort by start position
+    # Sort by position in text
     entities.sort(key=lambda x: x.span_start)
     return entities

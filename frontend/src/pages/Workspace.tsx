@@ -60,61 +60,91 @@ export function Workspace() {
     if (status === 'em_execucao') setActiveStageId(id);
   };
 
+  const resetPipeline = () => {
+    setStageStatuses({
+      1: 'concluido', 2: 'pendente', 3: 'pendente', 4: 'pendente', 5: 'pendente',
+      6: 'pendente', 7: 'pendente', 8: 'pendente', 9: 'pendente', 10: 'pendente'
+    });
+    setActiveStageId(1);
+    setDocData(null);
+    setAnonymizeData(null);
+    setReviewData(null);
+    setUploadedFile(null);
+  };
+
   const runPipeline = async () => {
     if (isRunning || !uploadedFile) return;
     setIsRunning(true);
     
     try {
-      // Stage 1 & 2: Ingestão e Extração
+      // Stage 2: Ingestão e Extração
       setStage(2, 'em_execucao');
       const formData = new FormData();
       formData.append('file', uploadedFile);
       const resUpload = await fetch('/api/v1/upload', { method: 'POST', body: formData });
-      if (!resUpload.ok) throw new Error("Upload failed");
+      if (!resUpload.ok) throw new Error(`Upload failed: ${resUpload.status}`);
       const dData = await resUpload.json();
       setDocData(dData);
       setStage(2, 'concluido');
+      await new Promise(r => setTimeout(r, 300));
 
-      // Stage 3, 4, 5: Detecção e Anonimização
+      // Stage 3: Detecção
       setStage(3, 'em_execucao');
-      setStage(4, 'em_execucao');
-      setStage(5, 'em_execucao');
       const resAnon = await fetch('/api/v1/anonymize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: dData.original_text })
       });
-      if (!resAnon.ok) throw new Error("Anonymize failed");
+      if (!resAnon.ok) throw new Error(`Anonymize failed: ${resAnon.status}`);
       const aData = await resAnon.json();
       setAnonymizeData(aData);
       setStage(3, 'concluido');
+      await new Promise(r => setTimeout(r, 300));
+
+      // Stage 4: Política & Transformação
+      setStage(4, 'em_execucao');
+      await new Promise(r => setTimeout(r, 400));
       setStage(4, 'concluido');
+      await new Promise(r => setTimeout(r, 300));
+
+      // Stage 5: Documento anonimizado
+      setStage(5, 'em_execucao');
+      await new Promise(r => setTimeout(r, 300));
       setStage(5, 'concluido');
+      await new Promise(r => setTimeout(r, 200));
 
       // Stage 6: Verificação
       setStage(6, 'em_execucao');
-      await new Promise(r => setTimeout(r, 500)); // Mock delay
+      await new Promise(r => setTimeout(r, 500));
       setStage(6, 'concluido');
+      await new Promise(r => setTimeout(r, 200));
 
-      // Stage 7 & 8: Revisão Adversarial
+      // Stage 7 & 8: Revisão Adversarial + Score
       setStage(7, 'em_execucao');
-      setStage(8, 'em_execucao');
       const resReview = await fetch('/api/v1/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ document_id: aData.document_id, anonymized_text: aData.anonymized_text })
       });
-      if (!resReview.ok) throw new Error("Review failed");
+      if (!resReview.ok) throw new Error(`Review failed: ${resReview.status}`);
       const rData = await resReview.json();
       setReviewData(rData);
       setStage(7, 'concluido');
+      await new Promise(r => setTimeout(r, 200));
+
+      setStage(8, 'em_execucao');
+      await new Promise(r => setTimeout(r, 300));
       setStage(8, 'concluido');
+      await new Promise(r => setTimeout(r, 200));
 
       // Stage 9 & 10: Matriz LGPD e Artefatos
       setStage(9, 'em_execucao');
-      setStage(10, 'em_execucao');
-      await new Promise(r => setTimeout(r, 500)); // Mock delay
+      await new Promise(r => setTimeout(r, 400));
       setStage(9, 'concluido');
+      await new Promise(r => setTimeout(r, 200));
+
+      setStage(10, 'em_execucao');
+      await new Promise(r => setTimeout(r, 300));
       setStage(10, 'concluido');
 
     } catch (e) {
@@ -130,15 +160,22 @@ export function Workspace() {
     }
   };
 
+
   return (
     <div className="flex h-full w-full overflow-hidden">
       <div className="w-72 bg-white border-r border-slate-200 flex flex-col h-full shrink-0">
-        <div className="p-4 border-b border-slate-200">
+        <div className="p-4 border-b border-slate-200 space-y-2">
           <button onClick={runPipeline} disabled={isRunning || !uploadedFile || stageStatuses[10] === 'concluido'}
             className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
             {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
             {isRunning ? 'Executando...' : 'Executar Pipeline'}
           </button>
+          {(stageStatuses[10] === 'concluido' || Object.values(stageStatuses).includes('bloqueado')) && (
+            <button onClick={resetPipeline}
+              className="w-full flex items-center justify-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">
+              Nova Análise
+            </button>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-1">
           {STAGES.map((stage) => {

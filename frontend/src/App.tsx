@@ -7,7 +7,7 @@ import { Auditoria } from './pages/Auditoria';
 import { Configuracoes } from './pages/Configuracoes';
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Workspace />} />
@@ -18,4 +18,4 @@ export function App() {
       </Routes>
     </BrowserRouter>);
 
-}
+}
