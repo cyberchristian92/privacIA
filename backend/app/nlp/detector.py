@@ -30,19 +30,29 @@ def _load_model():
 
 def detect_entities(text: str) -> List[Entity]:
     nlp = _load_model()
-    doc = nlp(text)
+    
+    # Run NER on a normalized (single-line) version to improve name detection
+    normalized = " ".join(text.split())
+    doc_normalized = nlp(normalized)
+    doc_original = nlp(text)
+    
     entities: List[Entity] = []
 
-    # 1. NER via spaCy
-    for ent in doc.ents:
+    # 1. NER via spaCy — from normalized text, map back to original positions
+    for ent in doc_normalized.ents:
         label_map = {"PER": "PESSOA", "ORG": "ORGANIZACAO", "LOC": "LOCALIDADE", "GPE": "LOCALIDADE"}
         if ent.label_ in label_map and len(ent.text.strip()) > 2:
             ent_type = label_map[ent.label_]
+            # Find original position
+            orig_start = text.find(ent.text)
+            if orig_start == -1:
+                continue
+            orig_end = orig_start + len(ent.text)
             entities.append(Entity(
                 id=str(uuid.uuid4())[:8],
                 type=ent_type,
-                span_start=ent.start_char,
-                span_end=ent.end_char,
+                span_start=orig_start,
+                span_end=orig_end,
                 surface_text=ent.text,
                 detector_source="ner",
                 confidence=0.85,
