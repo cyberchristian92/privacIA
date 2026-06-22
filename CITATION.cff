@@ -3,9 +3,9 @@ title: "PrivacIA: Framework de Anonimização by-Design e Revisão Adversarial"
 message: "If you use this software, please cite it as below."
 type: software
 authors:
-  - family-names: "Silva" # Atualize com seu sobrenome real
-    given-names: "Christian" # Atualize com seu nome real
-    # orcid: "https://orcid.org/0000-0000-0000-0000" # Descomente e preencha se tiver ORCID
+  - family-names: "Morais"
+    given-names: "Christian Amarildo Amorim"
+  - given-names: "Osvaldo"
 repository-code: "https://github.com/cyberchristian92/privacIA"
 abstract: >-
   PrivacIA é uma ferramenta completa e local de anonimização e validação 
