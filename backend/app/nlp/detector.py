@@ -21,11 +21,11 @@ def _load_model():
         return _nlp
     try:
         import spacy as _spacy
-        _nlp = _spacy.load("pt_core_news_sm")
+        _nlp = _spacy.load("pt_core_news_lg")
     except OSError:
         import spacy as _spacy
-        _spacy.cli.download("pt_core_news_sm")
-        _nlp = _spacy.load("pt_core_news_sm")
+        _spacy.cli.download("pt_core_news_lg")
+        _nlp = _spacy.load("pt_core_news_lg")
     return _nlp
 
 def detect_entities(text: str) -> List[Entity]:
@@ -57,6 +57,29 @@ def detect_entities(text: str) -> List[Entity]:
                 detector_source="ner",
                 confidence=0.85,
                 sensitivity_level="alta" if ent_type == "PESSOA" else "média"
+            ))
+
+    # 1.5 Contextual Regex for Names (Fallback for NER)
+    contextual_name_pattern = r"(?i)(?:Reclamante|Reclamado|Autor|Réu|Reu|Contratante|Contratada|Nome|Paciente):\s*([A-ZÀ-Ÿ][a-zà-ÿ]+(?: (?:da|de|do|das|dos) )?(?: [A-ZÀ-Ÿ][a-zà-ÿ]+)+)"
+    for match in re.finditer(contextual_name_pattern, text):
+        name_text = match.group(1)
+        start_idx = match.start(1)
+        end_idx = match.end(1)
+        
+        overlap = any(
+            start_idx < e.span_end and end_idx > e.span_start
+            for e in entities
+        )
+        if not overlap:
+            entities.append(Entity(
+                id=str(uuid.uuid4())[:8],
+                type="PESSOA",
+                span_start=start_idx,
+                span_end=end_idx,
+                surface_text=name_text,
+                detector_source="regex",
+                confidence=0.90,
+                sensitivity_level="alta"
             ))
 
     # 2. Regex for structured patterns
