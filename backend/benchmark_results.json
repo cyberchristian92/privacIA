@@ -1,1 +1,1 @@
-{"total_docs": 30, "accuracy": {"PESSOA": 50.0, "CPF": 96.66666666666667, "EMAIL": 83.33333333333334, "TELEFONE": 73.33333333333333, "CNPJ": 76.66666666666667}, "latency": {"avg_ms": 2977.4909337361655, "p95_ms": 3036.4028096199013}, "adversarial_risk": {"Baixo": 23, "M\u00e9dio": 7}, "approval_rate": 76.66666666666667}
+{"total_docs": 100, "accuracy": {"PESSOA": 64.0, "CPF": 98.0, "EMAIL": 83.0, "TELEFONE": 78.0, "CNPJ": 84.0}, "latency": {"avg_ms": 2552.14599609375, "p95_ms": 2604.1754007339478}, "adversarial_risk": {"Baixo": 84, "M\u00e9dio": 16}, "approval_rate": 84.0}

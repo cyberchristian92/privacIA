@@ -15,7 +15,7 @@ random.seed(42)
 
 API_URL = "http://127.0.0.1:8000/api/v1/anonymize"
 REVIEW_URL = "http://127.0.0.1:8000/api/v1/review"
-NUM_DOCS = 30 # Teste com 30 documentos complexos
+NUM_DOCS = 100 # Teste com 100 documentos complexos (Amostragem Estatisticamente Relevante)
 
 # Templates de documentos jurídicos/RH
 TEMPLATES = [
@@ -128,29 +128,32 @@ def generate_report_and_chart(df):
     # Avaliação Adversarial
     risk_counts = df['risk_level'].value_counts()
     
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+    plt.style.use('seaborn-v0_8-darkgrid') # Estilo mais profissional
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 7))
+    fig.suptitle(f'PrivacIA - Relatório Oficial de Benchmark (N={len(df)} Documentos)', fontsize=18, fontweight='bold', y=1.05)
     
     # Gráfico 1: Acurácia
-    bars = ax1.bar(accuracy.keys(), accuracy.values(), color=['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'])
+    bars = ax1.bar(accuracy.keys(), accuracy.values(), color=['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'], edgecolor='black', linewidth=1.2)
     ax1.set_ylim(0, 110)
-    ax1.set_ylabel('Taxa de Deteção (%)')
-    ax1.set_title('Efetividade de Extração (PII)')
+    ax1.set_ylabel('Taxa de Deteção (%)', fontsize=12)
+    ax1.set_title('Efetividade de Extração (PII)', fontsize=14, pad=15)
     for bar in bars:
         height = bar.get_height()
         ax1.annotate(f'{height:.1f}%', xy=(bar.get_x() + bar.get_width() / 2, height),
-                     xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
+                     xytext=(0, 5), textcoords="offset points", ha='center', va='bottom', fontweight='bold')
                      
     # Gráfico 2: Latência
-    ax2.hist(df["latency_ms"], bins=10, color='#64748b', edgecolor='white')
-    ax2.set_xlabel('Tempo (ms)')
-    ax2.set_ylabel('Frequência')
-    ax2.set_title(f'Latência API Completa\n(Média: {avg_latency:.1f}ms)')
+    ax2.hist(df["latency_ms"], bins=15, color='#475569', edgecolor='black', alpha=0.85)
+    ax2.set_xlabel('Tempo total (ms)', fontsize=12)
+    ax2.set_ylabel('Frequência (Documentos)', fontsize=12)
+    ax2.set_title(f'Latência API Completa\n(Média: {avg_latency:.1f}ms | P95: {p95_latency:.1f}ms)', fontsize=14, pad=15)
     
     # Gráfico 3: Risco Adversarial
     colors_risk = {'Baixo': '#10b981', 'Médio': '#f59e0b', 'Alto': '#ef4444', 'Desconhecido': '#9ca3af'}
     ax3.pie(risk_counts.values, labels=risk_counts.index, autopct='%1.1f%%', 
-            colors=[colors_risk.get(k, '#9ca3af') for k in risk_counts.index], startangle=90)
-    ax3.set_title('Reidentificação por Ataque Adversarial')
+            colors=[colors_risk.get(k, '#9ca3af') for k in risk_counts.index], startangle=90, 
+            wedgeprops={'edgecolor': 'black', 'linewidth': 1}, textprops={'fontsize': 12, 'fontweight': 'bold'})
+    ax3.set_title('Resistência a Ataques Adversariais', fontsize=14, pad=15)
     
     plt.tight_layout()
     chart_path = r"C:\Users\chris\.gemini\antigravity-ide\brain\d155fbe8-e323-4dab-9e96-7b70278e50ae\benchmark_chart.png"
