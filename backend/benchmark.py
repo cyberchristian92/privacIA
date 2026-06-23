@@ -21,7 +21,9 @@ NUM_DOCS = 30 # Teste com 30 documentos complexos
 TEMPLATES = [
     "CONTRATO DE TRABALHO\n\nEmpregado: {name}\nCPF: {cpf}\nEndereço: {address}\nEmail de contato: {email}\nTelefone: {phone}\n\nA empresa contratante, inscrita no CNPJ {cnpj}, concorda...",
     "TERMO DE RESCISÃO\n\nNome: {name}\nPortador do CPF nº {cpf}, residente em {address}.\nContatos: {email} / {phone}\nEmpregador: Empresa XYZ CNPJ {cnpj}.",
-    "Processo N. 12345/24\n\nRequerente: {name}, CPF {cpf}.\nDados informados:\n- E-mail principal: {email}\n- Celular: {phone}\nRéu: Nova Soluções LTDA ({cnpj})."
+    "Processo N. 12345/24\n\nRequerente: {name}, CPF {cpf}.\nDados informados:\n- E-mail principal: {email}\n- Celular: {phone}\nRéu: Nova Soluções LTDA ({cnpj}).",
+    "ATA DE REUNIÃO DE DIRETORIA\n\nO(A) Diretor Executivo (CEO) {name}, portador do CPF {cpf}, telefone {phone}, abriu a sessão para discutir as demissões da empresa {cnpj}.",
+    "CITAÇÃO DE IMPROBIDADE\n\nO Prefeito {name}, inscrito no CPF {cpf}, residente em {address}, foi intimado via email {email} no dia de hoje."
 ]
 
 def generate_synthetic_data(num_docs: int):

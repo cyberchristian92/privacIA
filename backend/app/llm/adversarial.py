@@ -43,14 +43,28 @@ Analise os vetores residuais de reidentificação. Retorne APENAS um JSON válid
         pass
         
     # Fallback/Mock case if Ollama is not running or fails
+    # Heurística realista: se o documento contém cargos únicos ou termos raros, há risco residual
+    lower_text = anonymized_text.lower()
+    risk = "Baixo"
+    approved = True
+    critical_issues = []
+    
+    contextual_leaks = ["prefeito", "presidente", "diretor executivo", "ceo"]
+    found_leaks = [word for word in contextual_leaks if word in lower_text]
+    
+    if found_leaks:
+        risk = "Médio"
+        approved = False
+        critical_issues = [f"Risco de inferência contextual. Cargos únicos detectados: {', '.join(found_leaks)}"]
+        
     return AdversarialReviewResponse(
-        approved=True,
-        risk_level="Baixo",
-        critical_issues=[],
-        improvements=["Considerar generalização temporal (ex: substituir datas exatas por apenas o ano)."],
-        summary="O documento apresenta resistência robusta contra ataques de reidentificação direta e indireta. (Nota: Validação gerada em modo Fallback por indisponibilidade do LLM local).",
+        approved=approved,
+        risk_level=risk,
+        critical_issues=critical_issues,
+        improvements=["Considerar generalização temporal (ex: substituir datas exatas por apenas o ano)."] if risk == "Baixo" else ["Generalizar cargos únicos para funções genéricas na anonimização."],
+        summary="O documento apresenta resistência contra reidentificação direta." if risk == "Baixo" else "O documento mascarou os identificadores diretos, mas possui contexto suficiente para reidentificação indireta.",
         log=[
-            "> Tentativa de conexão local falhou ou retornou timeout.",
-            "- Fallback ativado: Análise baseada em heurísticas padrão de segurança."
+            "> Validação Heurística (Fallback LLM)",
+            f"- Resultado: Risco {risk}"
         ]
     )
