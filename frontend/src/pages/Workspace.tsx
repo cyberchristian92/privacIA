@@ -81,7 +81,7 @@ export function Workspace() {
       setStage(2, 'em_execucao');
       const formData = new FormData();
       formData.append('file', uploadedFile);
-      const resUpload = await fetch('/api/v1/upload', { method: 'POST', body: formData });
+      const resUpload = await fetch('http://localhost:8000/api/v1/upload', { method: 'POST', body: formData });
       if (!resUpload.ok) throw new Error(`Upload failed: ${resUpload.status}`);
       const dData = await resUpload.json();
       setDocData(dData);
@@ -90,7 +90,7 @@ export function Workspace() {
 
       // Stage 3: Detecção
       setStage(3, 'em_execucao');
-      const resAnon = await fetch('/api/v1/anonymize', {
+      const resAnon = await fetch('http://localhost:8000/api/v1/anonymize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: dData.original_text })
@@ -121,7 +121,7 @@ export function Workspace() {
 
       // Stage 7 & 8: Revisão Adversarial + Score
       setStage(7, 'em_execucao');
-      const resReview = await fetch('/api/v1/review', {
+      const resReview = await fetch('http://localhost:8000/api/v1/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ document_id: aData.document_id, anonymized_text: aData.anonymized_text })
